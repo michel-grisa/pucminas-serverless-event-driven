@@ -2,30 +2,6 @@
 
 A lightweight and highly portable Node.js serverless function that maps a day and a month to unique, stylized mythological name combinations (e.g., `01/08` maps to `diabolic dragon`).
 
-## Features
-
-- **No external dependencies:** Fully built on Node.js core modules.
-- **Leap-year-aware Date Validation:** Rejects impossible calendar dates (like Feb 30th or April 31st).
-- **Flexible Input Parsing:**
-  - Standard query parameters: `?day=1&month=8`
-  - Combined date query parameter: `?date=01/08` or `?date=01-08` or `?date=2026-08-01`
-  - Fallback: Uses the current system date if no query is provided.
-- **Multi-Environment Support:**
-  - Exported AWS Lambda handler (`handler`)
-  - Exported standard HTTP Request/Response handler for Vercel/Google Cloud Functions (`httpHandler` / `default`)
-  - Local HTTP server simulation (`npm start`)
-  - **Docker Containerized Support** (ideal for GCP Cloud Run or AWS Fargate)
-
-## Name Tables
-
-### Days (1 - 31)
-1. diabolic, 2. celestial, 3. shadowy, 4. radiant, 5. ferocious, 6. mystic, 7. venomous, 8. golden, 9. eternal, 10. chaotic, 11. cosmic, 12. silent, 13. haunted, 14. ancient, 15. swift, 16. iron, 17. frost, 18. stormy, 19. emerald, 20. blazing, 21. obsidian, 22. spectral, 23. thunderous, 24. whispering, 25. lunar, 26. solar, 27. wild, 28. grim, 29. phantom, 30. cursed, 31. immortal
-
-### Months (1 - 12)
-1. phoenix, 2. griffin, 3. unicorn, 4. basilisk, 5. chimera, 6. gorgon, 7. kraken, 8. dragon, 9. wyvern, 10. werewolf, 11. vampire, 12. valkyrie
-
----
-
 ## Local Development & Testing
 
 ### 1. Run the Local Simulator
@@ -53,13 +29,6 @@ By default, the server runs at **http://localhost:3000/**.
   "source": "date parameter (01/08)"
 }
 ```
-
-### 2. Run Tests
-Execute the comprehensive test suite utilizing Node.js's native test runner:
-```bash
-npm test
-```
-
 ---
 
 ## Docker Support
@@ -74,6 +43,30 @@ docker build -t mythological-names-service .
 docker run -p 3000:3000 mythological-names-service
 ```
 Open `http://localhost:3000/?date=01/08` in your browser.
+
+## Features
+
+- **No external dependencies:** Fully built on Node.js core modules.
+- **Leap-year-aware Date Validation:** Rejects impossible calendar dates (like Feb 30th or April 31st).
+- **Flexible Input Parsing:**
+  - Standard query parameters: `?day=1&month=8`
+  - Combined date query parameter: `?date=01/08` or `?date=01-08` or `?date=2026-08-01`
+  - Fallback: Uses the current system date if no query is provided.
+- **Multi-Environment Support:**
+  - Exported AWS Lambda handler (`handler`)
+  - Exported standard HTTP Request/Response handler for Vercel/Google Cloud Functions (`httpHandler` / `default`)
+  - Local HTTP server simulation (`npm start`)
+  - **Docker Containerized Support** (ideal for GCP Cloud Run or AWS Fargate)
+
+## Name Tables
+
+### Days (1 - 31)
+1. diabolic, 2. celestial, 3. shadowy, 4. radiant, 5. ferocious, 6. mystic, 7. venomous, 8. golden, 9. eternal, 10. chaotic, 11. cosmic, 12. silent, 13. haunted, 14. ancient, 15. swift, 16. iron, 17. frost, 18. stormy, 19. emerald, 20. blazing, 21. obsidian, 22. spectral, 23. thunderous, 24. whispering, 25. lunar, 26. solar, 27. wild, 28. grim, 29. phantom, 30. cursed, 31. immortal
+
+### Months (1 - 12)
+1. phoenix, 2. griffin, 3. unicorn, 4. basilisk, 5. chimera, 6. gorgon, 7. kraken, 8. dragon, 9. wyvern, 10. werewolf, 11. vampire, 12. valkyrie
+
+
 
 ---
 
