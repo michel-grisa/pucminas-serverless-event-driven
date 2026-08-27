@@ -1,0 +1,22 @@
+{
+  "name": "entregas-serverless",
+  "version": "1.0.0",
+  "description": "A simple Node.js serverless function mapping day and month to mythological names",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "publish": "node publisher.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "serverless",
+    "nodejs",
+    "generator"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/pubsub": "^6.0.1"
+  }
+}
