@@ -1,0 +1,46 @@
+main:
+  params: [input]
+  steps:
+    - validateInput:
+        switch:
+          - condition: ${input.movieTitle == ""}
+            raise: "movieTitle is required"
+    - getTmdb:
+        call: http.get
+        args:
+          url: https://api.themoviedb.org/3/search/movie
+          query:
+            api_key: ${sys.get_env("TMDB_API_KEY")}
+            query: ${input.movieTitle}
+            include_adult: false
+            language: en-US
+            page: 1
+        result: tmdbResponse
+    - extractTmdb:
+        assign:
+          - tmdbMovie: ${tmdbResponse.body.results[0]}
+          - tmdbRating: ${tmdbMovie.vote_average}
+    - getOmdb:
+        call: http.get
+        args:
+          url: https://www.omdbapi.com/
+          query:
+            apikey: ${sys.get_env("OMDB_API_KEY")}
+            t: ${input.movieTitle}
+        result: omdbResponse
+    - returnResult:
+        return:
+          success: true
+          movieTitle: ${input.movieTitle}
+          tmdb:
+            title: ${tmdbMovie.title}
+            voteAverage: ${tmdbRating}
+            voteCount: ${tmdbMovie.vote_count}
+            overview: ${tmdbMovie.overview}
+            releaseDate: ${tmdbMovie.release_date}
+          omdb:
+            title: ${omdbResponse.body.Title}
+            imdbRating: ${omdbResponse.body.imdbRating}
+            imdbVotes: ${omdbResponse.body.imdbVotes}
+            genre: ${omdbResponse.body.Genre}
+            year: ${omdbResponse.body.Year}
