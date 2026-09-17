@@ -51,7 +51,7 @@ jobs:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       REGION: ${{ secrets.GCP_REGION }}
       WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      DEPLOYER_SERVICE_ACCOUNT: ${{ secrets.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      DEPLOYER_SERVICE_ACCOUNT: ${{ format('github-actions-deployer@{0}.iam.gserviceaccount.com', secrets.GCP_PROJECT_ID) }}
     defaults:
       run:
         working-directory: checkpoint-5
@@ -75,7 +75,7 @@ jobs:
           fi
           test -n "$REGION" || { echo "Missing GCP_REGION repository/environment variable"; exit 1; }
           test -n "$WIF_PROVIDER" || { echo "Missing GCP_WORKLOAD_IDENTITY_PROVIDER variable or secret"; exit 1; }
-          test -n "$DEPLOYER_SERVICE_ACCOUNT" || { echo "Missing GCP_DEPLOYER_SERVICE_ACCOUNT variable or secret"; exit 1; }
+          test -n "$DEPLOYER_SERVICE_ACCOUNT" || { echo "Could not build the deployer service account email"; exit 1; }
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2

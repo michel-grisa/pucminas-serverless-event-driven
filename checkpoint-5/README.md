@@ -23,7 +23,6 @@ No GitHub, abra **Settings > Secrets and variables > Actions** e cadastre os val
 | `GCP_PROJECT_ID` | Secret | Project ID real do GCP, por exemplo `meu-projeto-123` |
 | `GCP_REGION` | Secret | Região, por exemplo `us-central1` |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | Secret | Recurso completo do provider WIF |
-| `GCP_DEPLOYER_SERVICE_ACCOUNT` | Secret | E-mail da conta de serviço de deploy |
 
 Crie os segredos:
 
@@ -34,7 +33,7 @@ Crie os segredos:
 
 O workflow usa exclusivamente os **Repository Secrets** listados acima. Use exatamente esses nomes. Se um valor obrigatório estiver vazio, o job `Validate deployment configuration` interromperá a execução informando qual configuração falta.
 
-O workflow usa diretamente os Secrets `GCP_PROJECT_ID` e `GCP_REGION` dentro do job `deploy`. Após a autenticação, usa o `gcloud` pré-instalado no runner Ubuntu e configura explicitamente o projeto com o valor validado. Variables com os mesmos nomes não são consideradas.
+O workflow usa diretamente os Secrets `GCP_PROJECT_ID`, `GCP_REGION` e `GCP_WORKLOAD_IDENTITY_PROVIDER`. O e-mail da conta de serviço é montado automaticamente como `github-actions-deployer@PROJECT_ID.iam.gserviceaccount.com`, exatamente como na criação abaixo. Após a autenticação, usa o `gcloud` pré-instalado no runner Ubuntu e configura explicitamente o projeto com o valor validado. Variables com os mesmos nomes não são consideradas.
 
 Importante: `GCP_PROJECT_ID` não é o nome/apelido exibido no console e não pode ser `SEU_PROJECT_ID`. Para descobrir o valor correto:
 
@@ -158,10 +157,18 @@ gcloud iam workload-identity-pools providers describe "$PROVIDER_ID" \
   --format='value(name)'
 ```
 
-O valor de `GCP_DEPLOYER_SERVICE_ACCOUNT` é:
+A conta de serviço usada pelo workflow deve ser:
 
 ```text
 github-actions-deployer@SEU_PROJECT_ID.iam.gserviceaccount.com
+```
+
+Confirme que ela existe no mesmo projeto usado em `GCP_PROJECT_ID`:
+
+```bash
+gcloud iam service-accounts describe \
+  "github-actions-deployer@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --project="$PROJECT_ID"
 ```
 
 ## Evidência da execução
