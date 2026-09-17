@@ -1,0 +1,26 @@
+{
+  "name": "checkpoint-3-1-movie-ratings",
+  "version": "1.0.0",
+  "description": "Node.js serverless function that returns TMDB and OMDb ratings for a movie title using GCP Workflows.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js --server",
+    "dev": "node --watch index.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "serverless",
+    "nodejs",
+    "gcp",
+    "workflows",
+    "tmdb",
+    "omdb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "google-auth-library": "^9.15.1"
+  }
+}

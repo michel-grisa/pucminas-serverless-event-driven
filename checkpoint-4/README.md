@@ -84,6 +84,4 @@ O título do filme e as chaves de API não são incluídos nos logs. O `request_
 ## Resumo das otimizações propostas
 
 
- **Adicionar cache por título normalizado:** consultas repetidas ao mesmo filme fazem chamadas desnecessárias ao TMDB e ao OMDb. Um cache com TTL, usando Memorystore ou Firestore conforme o volume, reduziria latência, consumo de APIs externas e risco de atingir limites. A 
-
-#
+ **Adicionar cache por título normalizado:** consultas repetidas ao mesmo filme fazem chamadas desnecessárias ao TMDB e ao OMDb. Um cache com TTL, usando Memorystore ou Firestore conforme o volume, reduziria latência, consumo de APIs externas e risco de atingir limites. 
