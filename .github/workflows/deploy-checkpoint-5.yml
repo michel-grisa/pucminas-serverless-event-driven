@@ -48,10 +48,10 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     env:
-      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
-      REGION: ${{ secrets.GCP_REGION || vars.GCP_REGION }}
-      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER || vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      DEPLOYER_SERVICE_ACCOUNT: ${{ secrets.GCP_DEPLOYER_SERVICE_ACCOUNT || vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REGION: ${{ secrets.GCP_REGION }}
+      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      DEPLOYER_SERVICE_ACCOUNT: ${{ secrets.GCP_DEPLOYER_SERVICE_ACCOUNT }}
     defaults:
       run:
         working-directory: checkpoint-5
@@ -66,7 +66,8 @@ jobs:
           PROJECT_ID: ${{ env.PROJECT_ID }}
           REGION: ${{ env.REGION }}
         run: |
-          test -n "$PROJECT_ID" || { echo "Missing GCP_PROJECT_ID repository/environment variable"; exit 1; }
+          echo "Workflow commit: $GITHUB_SHA"
+          test -n "$PROJECT_ID" || { echo "Missing GCP_PROJECT_ID repository secret"; exit 1; }
           if [[ "$PROJECT_ID" == "SEU_PROJECT_ID" || ! "$PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]; then
             echo "GCP_PROJECT_ID must be the real Google Cloud Project ID, not a placeholder or display name"
             exit 1
@@ -84,7 +85,7 @@ jobs:
       - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ env.PROJECT_ID }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Deploy Workflow
         env:
