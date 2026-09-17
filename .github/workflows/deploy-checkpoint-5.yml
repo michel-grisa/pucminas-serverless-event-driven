@@ -67,8 +67,9 @@ jobs:
           REGION: ${{ env.REGION }}
         run: |
           echo "Workflow commit: $GITHUB_SHA"
+          echo "GCP_PROJECT_ID length: ${#PROJECT_ID}"
           test -n "$PROJECT_ID" || { echo "Missing GCP_PROJECT_ID repository secret"; exit 1; }
-          if [[ "$PROJECT_ID" == "SEU_PROJECT_ID" || ! "$PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]; then
+          if [[ "$PROJECT_ID" =~ ^(SEU_|YOUR_|PLACEHOLDER) || ! "$PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]; then
             echo "GCP_PROJECT_ID must be the real Google Cloud Project ID, not a placeholder or display name"
             exit 1
           fi
