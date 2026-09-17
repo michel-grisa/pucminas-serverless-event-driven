@@ -86,9 +86,6 @@ jobs:
       - name: Clear inherited gcloud project
         run: |
           gcloud config unset project || true
-          echo "CLOUDSDK_CORE_PROJECT=" >> "$GITHUB_ENV"
-          echo "CLOUDSDK_PROJECT=" >> "$GITHUB_ENV"
-          echo "GOOGLE_CLOUD_PROJECT=" >> "$GITHUB_ENV"
 
       - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
