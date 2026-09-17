@@ -35,6 +35,22 @@ O workflow usa exclusivamente os **Repository Secrets** listados acima. Use exat
 
 O workflow usa diretamente os Secrets `GCP_PROJECT_ID`, `GCP_REGION` e `GCP_WORKLOAD_IDENTITY_PROVIDER`. O e-mail da conta de serviço é montado automaticamente como `github-actions-deployer@PROJECT_ID.iam.gserviceaccount.com`, exatamente como na criação abaixo. Após a autenticação, usa o `gcloud` pré-instalado no runner Ubuntu e configura explicitamente o projeto com o valor validado. Variables com os mesmos nomes não são consideradas.
 
+Se o smoke test retornar HTTP 500, consulte a execução mais recente do Workflow para ver o erro original:
+
+```bash
+gcloud workflows executions list movie-ratings-workflow \
+  --location=us-central1 \
+  --project="$PROJECT_ID" \
+  --limit=5
+
+gcloud workflows executions describe EXECUTION_ID \
+  --workflow=movie-ratings-workflow \
+  --location=us-central1 \
+  --project="$PROJECT_ID"
+```
+
+A função também registra o campo `workflow_error` no Cloud Logging quando a execução falha. Não inclua chaves de API nos screenshots ou nos logs compartilhados.
+
 Importante: `GCP_PROJECT_ID` não é o nome/apelido exibido no console e não pode ser `SEU_PROJECT_ID`. Para descobrir o valor correto:
 
 ```bash

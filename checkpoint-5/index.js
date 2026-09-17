@@ -253,12 +253,15 @@ export async function invokeGcpWorkflow(movieTitle) {
     }
 
     if (pollPayload.state === 'FAILED' || pollPayload.state === 'CANCELLED') {
+      const workflowError = pollPayload.error || {};
+      const errorMessage = workflowError.message || workflowError.tags || JSON.stringify(workflowError) || 'Workflow execution failed.';
       logEvent('ERROR', 'workflow.failed', {
         state: pollPayload.state,
         polls: i + 1,
+        workflow_error: errorMessage,
         duration_ms: elapsedMilliseconds(startTime)
       });
-      throw new Error(pollPayload.error?.message || 'Workflow execution failed.');
+      throw new Error(`Workflow execution ${pollPayload.state.toLowerCase()}: ${errorMessage}`);
     }
 
     await new Promise((resolve) => setTimeout(resolve, 1000));

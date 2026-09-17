@@ -21,6 +21,12 @@ main:
             language: en-US
             page: 1
         result: tmdbResponse
+    - validateTmdbResponse:
+        switch:
+          - condition: ${tmdbResponse.code != 200}
+            raise: ${"TMDB returned HTTP " + string(tmdbResponse.code)}
+          - condition: ${len(tmdbResponse.body.results) == 0}
+            raise: "TMDB returned no movies for the requested title"
     - extractTmdb:
         assign:
           - tmdbMovie: ${tmdbResponse.body.results[0]}
