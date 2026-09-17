@@ -34,7 +34,7 @@ Crie os segredos:
 
 O workflow aceita `GCP_WORKLOAD_IDENTITY_PROVIDER` e `GCP_DEPLOYER_SERVICE_ACCOUNT` como **Variables** ou **Secrets** do repositório. Quando os dois existem, o **Secret tem prioridade**. Use exatamente esses nomes. Se um valor obrigatório estiver vazio, o job `Validate deployment configuration` interromperá a execução informando qual configuração falta.
 
-O mesmo vale para `GCP_PROJECT_ID` e `GCP_REGION`: o workflow procura primeiro em **Secrets** e usa o valor de **Variables** como alternativa. Portanto, se existir uma Variable antiga com `SEU_PROJECT_ID`, ela não sobrescreverá o Secret correto. Recomenda-se remover ou corrigir essa Variable para evitar confusão.
+O mesmo vale para `GCP_PROJECT_ID` e `GCP_REGION`: o workflow procura primeiro em **Secrets** e usa o valor de **Variables** como alternativa. Esses valores são resolvidos dentro do job `deploy`, no mesmo escopo em que o Secret é usado. Portanto, se existir uma Variable antiga com `SEU_PROJECT_ID`, ela não sobrescreverá o Secret correto. Recomenda-se remover ou corrigir essa Variable para evitar confusão.
 
 Importante: `GCP_PROJECT_ID` não é o nome/apelido exibido no console e não pode ser `SEU_PROJECT_ID`. Para descobrir o valor correto:
 
@@ -43,6 +43,8 @@ gcloud projects list --format='table(projectId,name)'
 ```
 
 Copie o valor da coluna `PROJECT_ID` para o Secret ou Variable `GCP_PROJECT_ID`. Por exemplo, se a saída mostrar `pos-serverless-event-driven` na coluna `PROJECT_ID`, esse é o valor que deve ser cadastrado.
+
+Depois de alterar um Secret, inicie uma nova execução com **Run workflow** ou faça um novo push. Na página da execução, confirme que o **commit** exibido contém a versão atual do arquivo `.github/workflows/deploy-checkpoint-5.yml`; reexecutar uma execução antiga pode usar a definição antiga do workflow.
 
 As chaves só são usadas durante o deploy e não são escritas em arquivos do repositório. Não configure credenciais em `README.md`, `workflow.yaml` ou no código.
 
