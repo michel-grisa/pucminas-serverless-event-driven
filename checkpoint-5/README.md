@@ -1,6 +1,6 @@
 # Checkpoint 5 - CI/CD com GitHub Actions
 
-Este checkpoint automatiza a validação e o deploy da função de avaliações de filmes no Google Cloud. O pipeline está em [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) e publica o Workflow e a Cloud Function Gen2.
+Este checkpoint automatiza a validação e o deploy da função de avaliações de filmes no Google Cloud. O pipeline está em [`.github/workflows/deploy-checkpoint-5.yml`](../.github/workflows/deploy-checkpoint-5.yml) e publica o Workflow e a Cloud Function Gen2.
 
 ## Fluxo do pipeline
 
@@ -16,7 +16,7 @@ O deploy também pode ser iniciado manualmente pela opção **Run workflow** na 
 
 ## Configuração no GitHub
 
-No repositório, abra **Settings > Secrets and variables > Actions** e crie as variáveis de repositório:
+No GitHub, abra **Settings > Secrets and variables > Actions**. Como o job de deploy usa o ambiente `production`, os valores podem ser criados nas **Variables** do repositório ou nas **Variables** do ambiente `production`:
 
 | Nome | Tipo | Valor |
 | --- | --- | --- |
@@ -31,6 +31,8 @@ Crie os segredos:
 | --- | --- | --- |
 | `TMDB_API_KEY` | Secret | Chave do TMDB |
 | `OMDB_API_KEY` | Secret | Chave do OMDb |
+
+O workflow também aceita `GCP_WORKLOAD_IDENTITY_PROVIDER` e `GCP_DEPLOYER_SERVICE_ACCOUNT` como **Secrets**, caso tenham sido cadastrados nessa seção. Use exatamente esses nomes. Se um valor obrigatório estiver vazio, o job `Validate deployment configuration` interromperá a execução informando qual configuração falta.
 
 As chaves só são usadas durante o deploy e não são escritas em arquivos do repositório. Não configure credenciais em `README.md`, `workflow.yaml` ou no código.
 
