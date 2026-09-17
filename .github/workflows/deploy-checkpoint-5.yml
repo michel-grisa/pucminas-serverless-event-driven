@@ -14,8 +14,8 @@ permissions:
   id-token: write
 
 env:
-  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-  REGION: ${{ vars.GCP_REGION }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION || secrets.GCP_REGION }}
   FUNCTION_NAME: movie-ratings-function
   WORKFLOW_NAME: movie-ratings-workflow
   WORKING_DIRECTORY: checkpoint-5

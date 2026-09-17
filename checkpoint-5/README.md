@@ -16,7 +16,7 @@ O deploy também pode ser iniciado manualmente pela opção **Run workflow** na 
 
 ## Configuração no GitHub
 
-No GitHub, abra **Settings > Secrets and variables > Actions**. Como o job de deploy usa o ambiente `production`, os valores podem ser criados nas **Variables** do repositório ou nas **Variables** do ambiente `production`:
+No GitHub, abra **Settings > Secrets and variables > Actions**. Como o job de deploy usa o ambiente `production`, os valores podem ser criados nas **Variables** ou nos **Secrets** do repositório/ambiente:
 
 | Nome | Tipo | Valor |
 | --- | --- | --- |
@@ -33,6 +33,8 @@ Crie os segredos:
 | `OMDB_API_KEY` | Secret | Chave do OMDb |
 
 O workflow também aceita `GCP_WORKLOAD_IDENTITY_PROVIDER` e `GCP_DEPLOYER_SERVICE_ACCOUNT` como **Secrets**, caso tenham sido cadastrados nessa seção. Use exatamente esses nomes. Se um valor obrigatório estiver vazio, o job `Validate deployment configuration` interromperá a execução informando qual configuração falta.
+
+O mesmo vale para `GCP_PROJECT_ID` e `GCP_REGION`: o workflow procura primeiro em **Variables** e usa o valor de **Secrets** como alternativa. Portanto, cadastrar `GCP_PROJECT_ID` como repository secret é suportado.
 
 As chaves só são usadas durante o deploy e não são escritas em arquivos do repositório. Não configure credenciais em `README.md`, `workflow.yaml` ou no código.
 
