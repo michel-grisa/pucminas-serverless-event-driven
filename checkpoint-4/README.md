@@ -83,10 +83,7 @@ O título do filme e as chaves de API não são incluídos nos logs. O `request_
 
 ## Resumo das otimizações propostas
 
-1. **Remover o polling síncrono do Workflow:** atualmente a função consulta o estado da execução por até 20 segundos, mantendo a instância ocupada e aumentando a latência e o custo. A proposta é iniciar o Workflow de forma assíncrona e entregar um `executionId`; o cliente poderia consultar o resultado depois ou receber uma notificação via Pub/Sub ou Firestore.
 
-2. **Adicionar cache por título normalizado:** consultas repetidas ao mesmo filme fazem chamadas desnecessárias ao TMDB e ao OMDb. Um cache com TTL, usando Memorystore ou Firestore conforme o volume, reduziria latência, consumo de APIs externas e risco de atingir limites. A medição pode usar eventos `cache.hit` e `cache.miss`.
-
-3. **Ajustar capacidade e retenção com base nas métricas:** depois de observar `movie_ratings_latency_ms` e `movie_ratings_errors_total`, é possível ajustar timeout, concorrência e limite máximo de instâncias. A retenção dos logs também deve ser compatível com a necessidade de auditoria, evitando custos de armazenamento e exportação desnecessários.
+ **Adicionar cache por título normalizado:** consultas repetidas ao mesmo filme fazem chamadas desnecessárias ao TMDB e ao OMDb. Um cache com TTL, usando Memorystore ou Firestore conforme o volume, reduziria latência, consumo de APIs externas e risco de atingir limites. A 
 
 #
