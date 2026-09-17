@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'checkpoint-5/**'
-      - '.github/workflows/deploy.yml'
+      - '.github/workflows/deploy-checkpoint-5.yml'
   workflow_dispatch:
 
 permissions:
