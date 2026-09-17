@@ -16,11 +16,11 @@ O deploy também pode ser iniciado manualmente pela opção **Run workflow** na 
 
 ## Configuração no GitHub
 
-No GitHub, abra **Settings > Secrets and variables > Actions**. Como o job de deploy usa o ambiente `production`, os valores podem ser criados nas **Variables** ou nos **Secrets** do repositório/ambiente:
+No GitHub, abra **Settings > Secrets and variables > Actions** e cadastre os valores diretamente no nível do repositório. Este workflow não exige a criação de um ambiente GitHub chamado `production`:
 
 | Nome | Tipo | Valor |
 | --- | --- | --- |
-| `GCP_PROJECT_ID` | Variable | ID do projeto GCP |
+| `GCP_PROJECT_ID` | Variable/Secret | Project ID real do GCP, por exemplo `meu-projeto-123` |
 | `GCP_REGION` | Variable | Região, por exemplo `us-central1` |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | Variable | Recurso completo do provider WIF |
 | `GCP_DEPLOYER_SERVICE_ACCOUNT` | Variable | E-mail da conta de serviço de deploy |
@@ -32,9 +32,17 @@ Crie os segredos:
 | `TMDB_API_KEY` | Secret | Chave do TMDB |
 | `OMDB_API_KEY` | Secret | Chave do OMDb |
 
-O workflow também aceita `GCP_WORKLOAD_IDENTITY_PROVIDER` e `GCP_DEPLOYER_SERVICE_ACCOUNT` como **Secrets**, caso tenham sido cadastrados nessa seção. Use exatamente esses nomes. Se um valor obrigatório estiver vazio, o job `Validate deployment configuration` interromperá a execução informando qual configuração falta.
+O workflow aceita `GCP_WORKLOAD_IDENTITY_PROVIDER` e `GCP_DEPLOYER_SERVICE_ACCOUNT` como **Variables** ou **Secrets** do repositório. Use exatamente esses nomes. Se um valor obrigatório estiver vazio, o job `Validate deployment configuration` interromperá a execução informando qual configuração falta.
 
 O mesmo vale para `GCP_PROJECT_ID` e `GCP_REGION`: o workflow procura primeiro em **Variables** e usa o valor de **Secrets** como alternativa. Portanto, cadastrar `GCP_PROJECT_ID` como repository secret é suportado.
+
+Importante: `GCP_PROJECT_ID` não é o nome/apelido exibido no console e não pode ser `SEU_PROJECT_ID`. Para descobrir o valor correto:
+
+```bash
+gcloud projects list --format='table(projectId,name)'
+```
+
+Copie o valor da coluna `PROJECT_ID` para o Secret ou Variable `GCP_PROJECT_ID`. Por exemplo, se a saída mostrar `pos-serverless-event-driven` na coluna `PROJECT_ID`, esse é o valor que deve ser cadastrado.
 
 As chaves só são usadas durante o deploy e não são escritas em arquivos do repositório. Não configure credenciais em `README.md`, `workflow.yaml` ou no código.
 
@@ -89,6 +97,24 @@ gcloud iam service-accounts add-iam-policy-binding "$SERVICE_ACCOUNT" \
   --role=roles/iam.workloadIdentityUser \
   --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/attribute.repository/${GITHUB_OWNER}/${GITHUB_REPOSITORY}"
 ```
+
+Esse binding permite que o repositório federado gere o token temporário da conta de serviço. A permissão `iam.serviceAccounts.getAccessToken` já faz parte de `roles/iam.workloadIdentityUser`; não conceda `roles/iam.serviceAccountTokenCreator` neste fluxo direto sem uma necessidade adicional de impersonação.
+
+Para verificar o binding aplicado:
+
+```bash
+gcloud iam service-accounts get-iam-policy "$SERVICE_ACCOUNT" \
+  --project="$PROJECT_ID" \
+  --format=json
+```
+
+Confirme que o resultado contém exatamente este membro, usando o owner e o nome real do repositório:
+
+```text
+principalSet://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/attribute.repository/GITHUB_OWNER/GITHUB_REPOSITORY
+```
+
+Se o binding estiver ausente ou diferente, execute novamente o comando acima. O `PROJECT_NUMBER` deve ser o número do mesmo projeto que contém o pool WIF, e `GITHUB_REPOSITORY` deve ser somente o nome do repositório, sem duplicar o owner.
 
 Conceda à conta de serviço apenas as permissões necessárias ao deploy. Uma configuração inicial comum para este projeto é:
 

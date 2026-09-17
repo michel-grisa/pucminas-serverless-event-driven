@@ -49,7 +49,6 @@ jobs:
     name: Deploy to Google Cloud
     needs: validate
     runs-on: ubuntu-latest
-    environment: production
     env:
       WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER || secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       DEPLOYER_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT || secrets.GCP_DEPLOYER_SERVICE_ACCOUNT }}
@@ -68,6 +67,10 @@ jobs:
           REGION: ${{ env.REGION }}
         run: |
           test -n "$PROJECT_ID" || { echo "Missing GCP_PROJECT_ID repository/environment variable"; exit 1; }
+          if [[ "$PROJECT_ID" == "SEU_PROJECT_ID" || ! "$PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]; then
+            echo "GCP_PROJECT_ID must be the real Google Cloud Project ID, not a placeholder or display name"
+            exit 1
+          fi
           test -n "$REGION" || { echo "Missing GCP_REGION repository/environment variable"; exit 1; }
           test -n "$WIF_PROVIDER" || { echo "Missing GCP_WORKLOAD_IDENTITY_PROVIDER variable or secret"; exit 1; }
           test -n "$DEPLOYER_SERVICE_ACCOUNT" || { echo "Missing GCP_DEPLOYER_SERVICE_ACCOUNT variable or secret"; exit 1; }
