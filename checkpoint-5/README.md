@@ -34,7 +34,7 @@ Crie os segredos:
 
 O workflow usa exclusivamente os **Repository Secrets** listados acima. Use exatamente esses nomes. Se um valor obrigatório estiver vazio, o job `Validate deployment configuration` interromperá a execução informando qual configuração falta.
 
-O workflow usa diretamente os Secrets `GCP_PROJECT_ID` e `GCP_REGION` dentro do job `deploy` e no `setup-gcloud`. Variables com os mesmos nomes não são consideradas.
+O workflow usa diretamente os Secrets `GCP_PROJECT_ID` e `GCP_REGION` dentro do job `deploy`. Antes do `setup-gcloud`, ele limpa qualquer propriedade de projeto herdada pelo runner; depois configura o projeto explicitamente com o valor validado. Variables com os mesmos nomes não são consideradas.
 
 Importante: `GCP_PROJECT_ID` não é o nome/apelido exibido no console e não pode ser `SEU_PROJECT_ID`. Para descobrir o valor correto:
 
