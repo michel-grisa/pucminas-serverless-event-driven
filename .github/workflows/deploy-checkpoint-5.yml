@@ -88,6 +88,18 @@ jobs:
           gcloud --version
           gcloud config set project "$PROJECT_ID"
 
+      - name: Enable required Google Cloud APIs
+        run: |
+          gcloud services enable \
+            cloudresourcemanager.googleapis.com \
+            cloudfunctions.googleapis.com \
+            workflows.googleapis.com \
+            workflowexecutions.googleapis.com \
+            run.googleapis.com \
+            cloudbuild.googleapis.com \
+            artifactregistry.googleapis.com \
+            --project="$PROJECT_ID"
+
       - name: Deploy Workflow
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}

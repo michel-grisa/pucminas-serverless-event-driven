@@ -65,6 +65,7 @@ gcloud services enable \
   iamcredentials.googleapis.com \
   iam.googleapis.com \
   sts.googleapis.com \
+  cloudresourcemanager.googleapis.com \
   cloudfunctions.googleapis.com \
   workflows.googleapis.com \
   workflowexecutions.googleapis.com \
@@ -134,6 +135,10 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
 
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role=roles/serviceusage.serviceUsageAdmin
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
   --role=roles/run.admin
 
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
@@ -146,6 +151,8 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
 ```
 
 O deploy de Cloud Functions Gen2 também pode exigir permissões para Cloud Build, Artifact Registry e a conta de serviço de runtime. Ajuste essas permissões conforme a política da organização, evitando `roles/owner`.
+
+O pipeline habilita as APIs necessárias automaticamente. Para isso, a conta `github-actions-deployer` precisa ter `serviceusage.services.enable`. Se a política do projeto não permitir que essa conta habilite APIs, execute previamente o comando acima com uma conta administrativa e remova o passo `Enable required Google Cloud APIs` do workflow.
 
 O valor da variável `GCP_WORKLOAD_IDENTITY_PROVIDER` deve ser o resultado de:
 
