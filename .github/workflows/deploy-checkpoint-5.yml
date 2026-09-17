@@ -14,8 +14,8 @@ permissions:
   id-token: write
 
 env:
-  PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
-  REGION: ${{ vars.GCP_REGION || secrets.GCP_REGION }}
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || vars.GCP_PROJECT_ID }}
+  REGION: ${{ secrets.GCP_REGION || vars.GCP_REGION }}
   FUNCTION_NAME: movie-ratings-function
   WORKFLOW_NAME: movie-ratings-workflow
   WORKING_DIRECTORY: checkpoint-5
@@ -50,8 +50,8 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     env:
-      WIF_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER || secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      DEPLOYER_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT || secrets.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER || vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      DEPLOYER_SERVICE_ACCOUNT: ${{ secrets.GCP_DEPLOYER_SERVICE_ACCOUNT || vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
     defaults:
       run:
         working-directory: checkpoint-5

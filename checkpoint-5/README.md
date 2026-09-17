@@ -32,9 +32,9 @@ Crie os segredos:
 | `TMDB_API_KEY` | Secret | Chave do TMDB |
 | `OMDB_API_KEY` | Secret | Chave do OMDb |
 
-O workflow aceita `GCP_WORKLOAD_IDENTITY_PROVIDER` e `GCP_DEPLOYER_SERVICE_ACCOUNT` como **Variables** ou **Secrets** do repositório. Use exatamente esses nomes. Se um valor obrigatório estiver vazio, o job `Validate deployment configuration` interromperá a execução informando qual configuração falta.
+O workflow aceita `GCP_WORKLOAD_IDENTITY_PROVIDER` e `GCP_DEPLOYER_SERVICE_ACCOUNT` como **Variables** ou **Secrets** do repositório. Quando os dois existem, o **Secret tem prioridade**. Use exatamente esses nomes. Se um valor obrigatório estiver vazio, o job `Validate deployment configuration` interromperá a execução informando qual configuração falta.
 
-O mesmo vale para `GCP_PROJECT_ID` e `GCP_REGION`: o workflow procura primeiro em **Variables** e usa o valor de **Secrets** como alternativa. Portanto, cadastrar `GCP_PROJECT_ID` como repository secret é suportado.
+O mesmo vale para `GCP_PROJECT_ID` e `GCP_REGION`: o workflow procura primeiro em **Secrets** e usa o valor de **Variables** como alternativa. Portanto, se existir uma Variable antiga com `SEU_PROJECT_ID`, ela não sobrescreverá o Secret correto. Recomenda-se remover ou corrigir essa Variable para evitar confusão.
 
 Importante: `GCP_PROJECT_ID` não é o nome/apelido exibido no console e não pode ser `SEU_PROJECT_ID`. Para descobrir o valor correto:
 
