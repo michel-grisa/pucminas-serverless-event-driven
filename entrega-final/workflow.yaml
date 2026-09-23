@@ -1,0 +1,93 @@
+main:
+  params: [input]
+  steps:
+    - logStarted:
+        call: sys.log
+        args:
+          text: "movie_ratings_workflow.started"
+          severity: INFO
+    - validateInput:
+        switch:
+          - condition: ${input.movieTitle == ""}
+            raise: "movieTitle is required"
+    - getTmdb:
+        call: http.get
+        args:
+          url: https://api.themoviedb.org/3/search/movie
+          query:
+            api_key: ${sys.get_env("TMDB_API_KEY")}
+            query: ${input.movieTitle}
+            include_adult: false
+            language: en-US
+            page: 1
+        result: tmdbResponse
+    - validateTmdbResponse:
+        switch:
+          - condition: ${tmdbResponse.code != 200}
+            raise: ${"TMDB returned HTTP " + string(tmdbResponse.code)}
+          - condition: ${len(tmdbResponse.body.results) == 0}
+            raise: "TMDB returned no movies for the requested title"
+    - extractTmdb:
+        assign:
+          - tmdbMovie: ${tmdbResponse.body.results[0]}
+          - tmdbRating: ${tmdbMovie.vote_average}
+    - logTmdbCompleted:
+        call: sys.log
+        args:
+          text: "movie_ratings_workflow.tmdb_completed"
+          severity: INFO
+    - getOmdb:
+        call: http.get
+        args:
+          url: https://www.omdbapi.com/
+          query:
+            apikey: ${sys.get_env("OMDB_API_KEY")}
+            t: ${input.movieTitle}
+        result: omdbResponse
+    - getGeminiRecommendations:
+        call: http.post
+        args:
+          url: ${"https://generativelanguage.googleapis.com/v1beta/models/" + sys.get_env("GEMINI_MODEL") + ":generateContent?key=" + sys.get_env("GEMINI_API_KEY")}
+          headers:
+            Content-Type: application/json
+          body:
+            contents:
+              - role: user
+                parts:
+                  - text: >
+                      Você é um cinefilo que assiste a todos os tipos de filme e é capaz de entender os mais variados tipos de gostos de filmes.
+                      Baseado no título "${input.movieTitle}", indique outros 3 filmes com uma breve descrição em um parágrafo explicando por que cada um deve agradar quem está interessado no título buscado.
+                      Seja responsável na sugestão, não use termos ofensivos e não sugira filmes impróprios para menores ou que contenham conteúdo claramente racista, misógino, homofóbico ou que enalteça qualquer outro tipo de preconceito de forma descarada.
+                      Não confunda com críticas excessivas que possam envolver esses temas; o que é aceitável deve ser evitado.
+                      Responda em português e devolva apenas um JSON válido no formato {"recommendations":[{"title":"...","description":"..."},{"title":"...","description":"..."},{"title":"...","description":"..."}]}.
+            generationConfig:
+              temperature: 0.2
+              topP: 0.8
+              maxOutputTokens: 300
+        result: geminiResponse
+    - extractGeminiResponse:
+        assign:
+          - geminiText: ${geminiResponse.body.candidates[0].content.parts[0].text}
+    - returnResult:
+        call: sys.log
+        args:
+          text: "movie_ratings_workflow.completed"
+          severity: INFO
+    - returnResponse:
+        return:
+          success: true
+          movieTitle: ${input.movieTitle}
+          tmdb:
+            title: ${tmdbMovie.title}
+            voteAverage: ${tmdbRating}
+            voteCount: ${tmdbMovie.vote_count}
+            overview: ${tmdbMovie.overview}
+            releaseDate: ${tmdbMovie.release_date}
+          omdb:
+            title: ${omdbResponse.body.Title}
+            imdbRating: ${omdbResponse.body.imdbRating}
+            imdbVotes: ${omdbResponse.body.imdbVotes}
+            genre: ${omdbResponse.body.Genre}
+            year: ${omdbResponse.body.Year}
+          gemini:
+            rawText: ${geminiText}
