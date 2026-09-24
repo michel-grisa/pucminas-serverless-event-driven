@@ -234,7 +234,7 @@ export async function getGeminiRecommendations(movieTitle) {
   logEvent('INFO', 'external_api.started', { provider: 'gemini' });
 
   const apiKey = process.env.GEMINI_API_KEY;
-  const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
+  const modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 
   if (!apiKey) {
     logEvent('WARNING', 'external_api.skipped', { provider: 'gemini', reason: 'missing_api_key' });
