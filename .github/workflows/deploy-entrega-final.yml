@@ -53,7 +53,7 @@ jobs:
       WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       DEPLOYER_SERVICE_ACCOUNT: ${{ format('github-actions-deployer@{0}.iam.gserviceaccount.com', secrets.GCP_PROJECT_ID) }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash-lite' }}
+      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-3.5-flash-lite' }}
     defaults:
       run:
         working-directory: entrega-final
