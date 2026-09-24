@@ -1,0 +1,150 @@
+name: Deploy Entrega Final
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'entrega-final/**'
+      - '.github/workflows/deploy-entrega-final.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  FUNCTION_NAME: movie-ratings-function
+  WORKFLOW_NAME: movie-ratings-workflow
+  WORKING_DIRECTORY: entrega-final
+
+jobs:
+  validate:
+    name: Validate application
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: entrega-final
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check JavaScript syntax
+        run: node --check index.js
+
+      - name: Run tests
+        run: npm test
+
+  deploy:
+    name: Deploy to Google Cloud
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REGION: ${{ secrets.GCP_REGION }}
+      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      DEPLOYER_SERVICE_ACCOUNT: ${{ format('github-actions-deployer@{0}.iam.gserviceaccount.com', secrets.GCP_PROJECT_ID) }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash-lite' }}
+    defaults:
+      run:
+        working-directory: entrega-final
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate deployment configuration
+        env:
+          WIF_PROVIDER: ${{ env.WIF_PROVIDER }}
+          DEPLOYER_SERVICE_ACCOUNT: ${{ env.DEPLOYER_SERVICE_ACCOUNT }}
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          REGION: ${{ env.REGION }}
+          GEMINI_API_KEY: ${{ env.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ env.GEMINI_MODEL }}
+        run: |
+          echo "Workflow commit: $GITHUB_SHA"
+          echo "GCP_PROJECT_ID length: ${#PROJECT_ID}"
+          test -n "$PROJECT_ID" || { echo "Missing GCP_PROJECT_ID repository secret"; exit 1; }
+          if [[ "$PROJECT_ID" =~ ^(SEU_|YOUR_|PLACEHOLDER) || ! "$PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]; then
+            echo "GCP_PROJECT_ID must be the real Google Cloud Project ID, not a placeholder or display name"
+            exit 1
+          fi
+          test -n "$REGION" || { echo "Missing GCP_REGION repository secret"; exit 1; }
+          test -n "$WIF_PROVIDER" || { echo "Missing GCP_WORKLOAD_IDENTITY_PROVIDER repository secret"; exit 1; }
+          test -n "$DEPLOYER_SERVICE_ACCOUNT" || { echo "Could not build the deployer service account email"; exit 1; }
+          test -n "$GEMINI_API_KEY" || { echo "Missing GEMINI_API_KEY repository secret"; exit 1; }
+          test -n "$GEMINI_MODEL" || { echo "Missing GEMINI_MODEL repository secret, using default model is allowed"; }
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Configure preinstalled gcloud CLI
+        run: |
+          gcloud --version
+          gcloud config set project "$PROJECT_ID"
+
+      - name: Enable required Google Cloud APIs
+        run: |
+          gcloud services enable \
+            cloudresourcemanager.googleapis.com \
+            cloudfunctions.googleapis.com \
+            workflows.googleapis.com \
+            workflowexecutions.googleapis.com \
+            run.googleapis.com \
+            cloudbuild.googleapis.com \
+            artifactregistry.googleapis.com \
+            --project="$PROJECT_ID"
+
+      - name: Deploy Workflow
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash-lite' }}
+        run: |
+          gcloud workflows deploy "$WORKFLOW_NAME" \
+            --source=workflow.yaml \
+            --location="$REGION" \
+            --project="$PROJECT_ID" \
+            --set-env-vars="TMDB_API_KEY=${TMDB_API_KEY},OMDB_API_KEY=${OMDB_API_KEY},GEMINI_API_KEY=${GEMINI_API_KEY},GEMINI_MODEL=${GEMINI_MODEL}"
+
+      - name: Deploy Cloud Function
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.0-flash-lite' }}
+        run: |
+          WORKFLOW_ENDPOINT="https://workflowexecutions.googleapis.com/v1/projects/${PROJECT_ID}/locations/${REGION}/workflows/${WORKFLOW_NAME}/executions"
+          gcloud functions deploy "$FUNCTION_NAME" \
+            --gen2 \
+            --runtime=nodejs22 \
+            --region="$REGION" \
+            --project="$PROJECT_ID" \
+            --source=. \
+            --entry-point=httpHandler \
+            --trigger-http \
+            --allow-unauthenticated \
+            --set-env-vars="TMDB_API_KEY=${TMDB_API_KEY},OMDB_API_KEY=${OMDB_API_KEY},GEMINI_API_KEY=${GEMINI_API_KEY},GEMINI_MODEL=${GEMINI_MODEL},USE_GCP_WORKFLOW=true,WORKFLOW_ENDPOINT=${WORKFLOW_ENDPOINT},GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${REGION}"
+
+      - name: Smoke test deployed function
+        run: |
+          FUNCTION_URL="$(gcloud functions describe "$FUNCTION_NAME" \
+            --gen2 \
+            --region="$REGION" \
+            --project="$PROJECT_ID" \
+            --format='value(serviceConfig.uri)')"
+          curl --fail-with-body --retry 3 --retry-delay 5 \
+            "$FUNCTION_URL?movie=Inception"
+          echo "Deployment completed: $FUNCTION_URL"
