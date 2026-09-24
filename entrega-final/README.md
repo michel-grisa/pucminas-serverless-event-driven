@@ -1,227 +1,167 @@
-# Checkpoint 5 - CI/CD com GitHub Actions
+# Entrega Final — API de avaliações e recomendações de filmes
 
-Este checkpoint automatiza a validação e o deploy da função de avaliações de filmes no Google Cloud. O pipeline está em [`.github/workflows/deploy-checkpoint-5.yml`](../.github/workflows/deploy-checkpoint-5.yml) e publica o Workflow e a Cloud Function Gen2.
+Este projeto entrega uma API serverless em Node.js para consultar avaliações de filmes em múltiplas fontes externas e complementar a resposta com recomendações inteligentes geradas por um modelo Gemini. A solução foi implementada com Google Cloud Functions, Google Cloud Workflows e automação de deploy por GitHub Actions.
 
-## Fluxo do pipeline
+## Visão geral
 
-1. Um push na branch `main` que altere `checkpoint-5/**` inicia o workflow.
-2. O job `validate` instala as dependências, verifica a sintaxe JavaScript e executa `npm test`.
-3. O job `deploy` só começa se a validação for aprovada.
-4. O GitHub Actions autentica no GCP usando OIDC e Workload Identity Federation, sem chave JSON no repositório.
-5. O Workflow é publicado primeiro.
-6. A Cloud Function é publicada com as variáveis de ambiente necessárias.
-7. Um smoke test chama a função implantada e falha o pipeline se a resposta HTTP não for bem-sucedida.
+A aplicação recebe um título de filme, consulta dados de avaliação em duas APIs externas e retorna uma resposta estruturada. Além disso, ele gera três recomendações com base no filme buscado, sempre em português, mantendo regras de responsabilidade e segurança para não sugerir conteúdo impróprio, ofensivo ou preconceituoso.
 
-O deploy também pode ser iniciado manualmente pela opção **Run workflow** na aba **Actions** do GitHub.
+O objetivo da arquitetura foi combinar simplicidade de desenvolvimento com separação de responsabilidades, observabilidade e facilidade de deploy em ambiente real.
 
-## Configuração no GitHub
+## Arquitetura
 
-No GitHub, abra **Settings > Secrets and variables > Actions** e cadastre os valores diretamente no nível do repositório. Este workflow não exige a criação de um ambiente GitHub chamado `production`:
+A solução é organizada em camadas:
 
-| Nome | Tipo | Valor |
-| --- | --- | --- |
-| `GCP_PROJECT_ID` | Secret | Project ID real do GCP, por exemplo `meu-projeto-123` |
-| `GCP_REGION` | Secret | Região, por exemplo `us-central1` |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Secret | Recurso completo do provider WIF |
+1. Camada de entrada
+   - A API HTTP recebe requisições GET ou POST.
+   - Extrai o parâmetro do filme a partir de `movie`, `title` ou `name`.
+   - Normaliza e valida o nome informado.
 
-Crie os segredos:
+2. Camada de integração externa
+   - TMDB: consulta metadados e avaliação do filme.
+   - OMDb: consulta detalhes complementares e nota IMDb.
+   - Gemini: gera sugestões relevantes e bem justificadas.
 
-| Nome | Tipo | Valor |
-| --- | --- | --- |
-| `TMDB_API_KEY` | Secret | Chave do TMDB |
-| `OMDB_API_KEY` | Secret | Chave do OMDb |
+3. Camada de orquestração
+   - Google Cloud Workflows coordena as chamadas externas em sequência.
+   - Isso reduz acoplamento entre a aplicação e as integrações, além de facilitar manutenção.
 
-O workflow usa exclusivamente os **Repository Secrets** listados acima. Use exatamente esses nomes. Se um valor obrigatório estiver vazio, o job `Validate deployment configuration` interromperá a execução informando qual configuração falta.
+4. Camada de automação
+   - GitHub Actions valida o código, instala dependências, executa testes e faz deploy no Google Cloud.
+   - O deploy usa autenticação via Workload Identity Federation, sem armazenar chaves JSON no repositório.
 
-O workflow usa diretamente os Secrets `GCP_PROJECT_ID`, `GCP_REGION` e `GCP_WORKLOAD_IDENTITY_PROVIDER`. O e-mail da conta de serviço é montado automaticamente como `github-actions-deployer@PROJECT_ID.iam.gserviceaccount.com`, exatamente como na criação abaixo. Após a autenticação, usa o `gcloud` pré-instalado no runner Ubuntu e configura explicitamente o projeto com o valor validado. Variables com os mesmos nomes não são consideradas.
+## Decisões técnicas e justificativas
 
-Se o smoke test retornar HTTP 500, consulte a execução mais recente do Workflow para ver o erro original:
+### 1. Node.js para a API serverless
+O projeto foi implementado em Node.js porque é leve, rápido para desenvolver APIs HTTP e bem adequado para integrações assíncronas com serviços externos.
 
-```bash
-gcloud workflows executions list movie-ratings-workflow \
-  --location=us-central1 \
-  --project="$PROJECT_ID" \
-  --limit=5 \
-  --format='table(name,state,startTime,endTime)'
+### 2. Cloud Functions Gen2
+A função HTTP foi implantada em Cloud Functions Gen2 por ser a solução mais simples para expor um endpoint serverless com baixa operação e escalabilidade automática. Isso evita manter infraestrutura dedicada e reduz a complexidade operacional.
 
-export EXECUTION_NAME="$(gcloud workflows executions list movie-ratings-workflow \
-  --location=us-central1 \
-  --project="$PROJECT_ID" \
-  --limit=1 \
-  --format='value(name)')"
-export EXECUTION_ID="${EXECUTION_NAME##*/}"
+### 3. Workflows para orquestração
+A orquestração em Google Cloud Workflows foi escolhida para isolar a lógica que compõe a resposta final. Em vez de centralizar tudo na função HTTP, o fluxo fica mais claro, mais fácil de auditar e mais resiliente a mudanças futuras.
 
-gcloud workflows executions describe "$EXECUTION_ID" \
-  --workflow=movie-ratings-workflow \
-  --location=us-central1 \
-  --project="$PROJECT_ID"
-```
+### 4. Integração com Gemini
+A recomendação com IA foi adicionada para oferecer um diferencial útil para o usuário. A decisão foi gerar apenas três sugestões, em um JSON estruturado, com um prompt específico para manter o conteúdo responsável e alinhado ao gosto do filme buscado. O objetivo foi evitar uso excessivo do modelo, mantendo o projeto acessível e didático.
 
-O segundo comando extrai automaticamente o ID curto da execução mais recente. Não execute o comando com o texto literal `EXECUTION_ID`; ele é apenas um marcador de documentação. A consulta local usa a conta exibida por `gcloud auth list`; ela precisa ter permissão para visualizar as execuções no projeto.
+### 5. Secrets no GitHub Actions
+Todas as chaves foram tratadas como repository secrets e não foram incluídas no código. Isso reduz riscos de vazamento e mantém o processo de deploy adequado para ambiente real.
 
-A função também registra o campo `workflow_error` no Cloud Logging quando a execução falha. Não inclua chaves de API nos screenshots ou nos logs compartilhados.
+### 6. Workload Identity Federation
+Em vez de usar credenciais estáticas de conta de serviço em JSON, o deploy usa OIDC com Workload Identity Federation. Isso melhora a segurança porque a autenticação é temporária e não depende de um arquivo fixo no repositório.
 
-Importante: `GCP_PROJECT_ID` não é o nome/apelido exibido no console e não pode ser `SEU_PROJECT_ID`. Para descobrir o valor correto:
+### 7. Observabilidade
+Os logs estruturados foram mantidos para registrar início e fim de requisições, falhas em APIs externas e erros em workflows. Isso ajuda muito no diagnóstico de problemas em produção.
 
-```bash
-gcloud projects list --format='table(projectId,name)'
-```
+## Estrutura do repositório
 
-Copie o valor da coluna `PROJECT_ID` para o Secret ou Variable `GCP_PROJECT_ID`. Por exemplo, se a saída mostrar `pos-serverless-event-driven` na coluna `PROJECT_ID`, esse é o valor que deve ser cadastrado.
+- `entrega-final/index.js`: aplicação principal, handlers, integrações e lógica de resposta
+- `entrega-final/workflow.yaml`: fluxo de orquestração do Google Cloud Workflows
+- `entrega-final/test.js`: testes unitários para parse da URL e parsing das recomendações
+- `entrega-final/.env.example`: exemplo de variáveis de ambiente
+- `.github/workflows/deploy-entrega-final.yml`: pipeline de validação e deploy
 
-Depois de alterar um Secret, inicie uma nova execução com **Run workflow** ou faça um novo push. Na página da execução, confirme que o **commit** exibido contém a versão atual do arquivo `.github/workflows/deploy-checkpoint-5.yml`; reexecutar uma execução antiga pode usar a definição antiga do workflow.
+## Variáveis de ambiente
 
-As chaves só são usadas durante o deploy e não são escritas em arquivos do repositório. Não configure credenciais em `README.md`, `workflow.yaml` ou no código.
+As principais variáveis utilizadas são:
 
-## Configurar Workload Identity Federation
+- `TMDB_API_KEY`
+- `OMDB_API_KEY`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL`
+- `USE_GCP_WORKFLOW`
+- `WORKFLOW_ENDPOINT`
+- `GCP_PROJECT_ID`
+- `GCP_REGION`
 
-O exemplo abaixo deve ser executado por uma pessoa com permissão administrativa no projeto. Substitua os valores antes de executar:
+O modelo recomendado para o Gemini é:
 
-```bash
-export PROJECT_ID="SEU_PROJECT_ID"
-export PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
-export GITHUB_OWNER="SUA_ORGANIZACAO_OU_USUARIO"
-export GITHUB_REPOSITORY="SEU_REPOSITORIO"
-export DEPLOYER_SA="github-actions-deployer"
-export POOL_ID="github-pool"
-export PROVIDER_ID="github-provider"
-export REGION="us-central1"
+- `gemini-3.5-flash-lite`
 
-gcloud services enable \
-  iamcredentials.googleapis.com \
-  iam.googleapis.com \
-  sts.googleapis.com \
-  cloudresourcemanager.googleapis.com \
-  cloudfunctions.googleapis.com \
-  workflows.googleapis.com \
-  workflowexecutions.googleapis.com \
-  run.googleapis.com \
-  cloudbuild.googleapis.com \
-  artifactregistry.googleapis.com
+## Fluxo de execução
 
-gcloud iam service-accounts create "$DEPLOYER_SA" \
-  --project="$PROJECT_ID" \
-  --display-name="GitHub Actions deployer"
+1. O usuário envia uma requisição com o nome do filme.
+2. A função extrai e normaliza o título.
+3. O Workflow consulta TMDB e OMDb.
+4. O serviço chama o Gemini para gerar recomendações.
+5. A resposta final é montada em JSON.
+6. O deploy e a validação são automatizados pelo GitHub Actions.
 
-gcloud iam workload-identity-pools create "$POOL_ID" \
-  --project="$PROJECT_ID" \
-  --location=global \
-  --display-name="GitHub Actions pool"
+## Como configurar o projeto localmente
 
-gcloud iam workload-identity-pools providers create-oidc "$PROVIDER_ID" \
-  --project="$PROJECT_ID" \
-  --location=global \
-  --workload-identity-pool="$POOL_ID" \
-  --display-name="GitHub provider" \
-  --issuer-uri="https://token.actions.githubusercontent.com/" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner" \
-  --attribute-condition="assertion.repository == '${GITHUB_OWNER}/${GITHUB_REPOSITORY}'"
-
-export SERVICE_ACCOUNT="${DEPLOYER_SA}@${PROJECT_ID}.iam.gserviceaccount.com"
-export PROVIDER_RESOURCE="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/providers/${PROVIDER_ID}"
-
-gcloud iam service-accounts add-iam-policy-binding "$SERVICE_ACCOUNT" \
-  --project="$PROJECT_ID" \
-  --role=roles/iam.workloadIdentityUser \
-  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/attribute.repository/${GITHUB_OWNER}/${GITHUB_REPOSITORY}"
-```
-
-Esse binding permite que o repositório federado gere o token temporário da conta de serviço. A permissão `iam.serviceAccounts.getAccessToken` já faz parte de `roles/iam.workloadIdentityUser`; não conceda `roles/iam.serviceAccountTokenCreator` neste fluxo direto sem uma necessidade adicional de impersonação.
-
-Para verificar o binding aplicado:
+1. Copie o exemplo de ambiente:
 
 ```bash
-gcloud iam service-accounts get-iam-policy "$SERVICE_ACCOUNT" \
-  --project="$PROJECT_ID" \
-  --format=json
+cp .env.example .env
 ```
 
-Confirme que o resultado contém exatamente este membro, usando o owner e o nome real do repositório:
+2. Preencha as chaves reais:
 
-```text
-principalSet://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/attribute.repository/GITHUB_OWNER/GITHUB_REPOSITORY
+```env
+TMDB_API_KEY=sua_chave_tmdb
+OMDB_API_KEY=sua_chave_omdb
+GEMINI_API_KEY=sua_chave_gemini
+GEMINI_MODEL=gemini-3.5-flash-lite
+USE_GCP_WORKFLOW=false
+WORKFLOW_ENDPOINT=https://workflowexecutions.googleapis.com/v1/projects/SEU_PROJETO/locations/REGION/workflows/NOME_DO_WORKFLOW/executions
 ```
 
-Se o binding estiver ausente ou diferente, execute novamente o comando acima. O `PROJECT_NUMBER` deve ser o número do mesmo projeto que contém o pool WIF, e `GITHUB_REPOSITORY` deve ser somente o nome do repositório, sem duplicar o owner.
-
-Conceda à conta de serviço apenas as permissões necessárias ao deploy. Uma configuração inicial comum para este projeto é:
+3. Instale as dependências:
 
 ```bash
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role=roles/cloudfunctions.developer
-
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role=roles/workflows.editor
-
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role=roles/serviceusage.serviceUsageConsumer
-
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role=roles/serviceusage.serviceUsageAdmin
-
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role=roles/run.admin
-
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role=roles/artifactregistry.writer
-
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${SERVICE_ACCOUNT}" \
-  --role=roles/iam.serviceAccountUser
+npm install
 ```
 
-O deploy de Cloud Functions Gen2 também pode exigir permissões para Cloud Build, Artifact Registry e a conta de serviço de runtime. Ajuste essas permissões conforme a política da organização, evitando `roles/owner`.
-
-O pipeline habilita as APIs necessárias automaticamente. Para isso, a conta `github-actions-deployer` precisa ter `serviceusage.services.enable`. Se a política do projeto não permitir que essa conta habilite APIs, execute previamente o comando acima com uma conta administrativa e remova o passo `Enable required Google Cloud APIs` do workflow.
-
-O valor da variável `GCP_WORKLOAD_IDENTITY_PROVIDER` deve ser o resultado de:
+4. Rode os testes:
 
 ```bash
-gcloud iam workload-identity-pools providers describe "$PROVIDER_ID" \
-  --project="$PROJECT_ID" \
-  --location=global \
-  --workload-identity-pool="$POOL_ID" \
-  --format='value(name)'
+npm test
 ```
 
-A conta de serviço usada pelo workflow deve ser:
-
-```text
-github-actions-deployer@SEU_PROJECT_ID.iam.gserviceaccount.com
-```
-
-Confirme que ela existe no mesmo projeto usado em `GCP_PROJECT_ID`:
+5. Inicie a aplicação localmente:
 
 ```bash
-gcloud iam service-accounts describe \
-  "github-actions-deployer@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --project="$PROJECT_ID"
+node index.js --server
 ```
 
-## Evidência da execução
+6. Faça uma chamada de teste:
 
-Após configurar os valores, faça um commit na branch `main` ou use **Run workflow**. A evidência da entrega deve mostrar:
+```bash
+curl "http://localhost:3000/?movie=Inception"
+```
 
-- Job `validate` concluído com sucesso.
-- Autenticação Google Cloud concluída sem uso de chave JSON.
-- Etapas `Deploy Workflow` e `Deploy Cloud Function` concluídas.
-- `Smoke test deployed function` retornando a resposta da função.
-- Hash do commit e data da execução visíveis no GitHub Actions.
+## Configuração no GitHub Actions
 
-Na aba **Actions**, abra a execução do workflow e capture um screenshot dos jobs verdes e outro dos logs de deploy. Não publique valores de secrets nos screenshots.
+No GitHub, em Settings > Secrets and variables > Actions, devem existir os secrets abaixo:
 
-## Links úteis
+- `GCP_PROJECT_ID`
+- `GCP_REGION`
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`
+- `TMDB_API_KEY`
+- `OMDB_API_KEY`
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL` (opcional, com fallback para `gemini-3.5-flash-lite`)
 
-- [GitHub Actions](https://docs.github.com/actions)
-- [Autenticação GCP com GitHub Actions](https://github.com/google-github-actions/auth)
-- [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation)
-- [Cloud Functions Gen2](https://cloud.google.com/functions/docs/2nd-gen/deploy)
-- [Cloud Workflows](https://cloud.google.com/workflows/docs/deploying-workflow)
+O workflow usa o padrão de Repository Secrets, respeitando a organização do repositório.
 
-A observabilidade implementada no checkpoint anterior é preservada: os logs estruturados continuam sendo enviados ao Cloud Logging após cada deploy.
+## Deploy
+
+O workflow responsável pelo deploy é:
+
+- `.github/workflows/deploy-entrega-final.yml`
+
+Ele faz:
+
+1. validação do código
+2. instalação de dependências
+3. execução de testes
+4. autenticação no Google Cloud por OIDC
+5. deploy do Workflow
+6. deploy da Cloud Function
+7. smoke test final
+
+## Observações finais
+
+Este projeto foi pensado como uma entrega didática, com foco em arquitetura serverless, integração com APIs externas, uso de IA responsável e pipeline automatizado para produção.
+
+A solução mantém uma boa separação entre aplicação, orquestração e deploy, o que facilita manutenção, evolução e compreensão da arquitetura como um conjunto coeso de decisões técnicas.
